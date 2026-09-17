@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_admin
@@ -6,10 +6,13 @@ from app.core.inspection_constants import DEFAULT_INSPECTION_CHECKLIST, INSPECTI
 from app.db.session import get_db
 from app.models import Car, CarInspection, User
 from app.schemas.inspection import CarInspectionIn
+from app.services.storage import save_upload, delete_upload, image_url
 from app.utils.response import success_response, error_response
 
 router = APIRouter(tags=["inspections"])
 admin_router = APIRouter(prefix="/admin-panel", tags=["admin-inspections"])
+
+SHEET_IMAGES_SUBDIR = "inspections"
 
 
 def _serialize_inspection(inspection: CarInspection) -> dict:
@@ -23,14 +26,18 @@ def _serialize_inspection(inspection: CarInspection) -> dict:
         "client_name": inspection.client_name,
         "chassis_number": inspection.chassis_number,
         "plate_number": inspection.plate_number,
-        "inspection_date": inspection.inspection_date,
+        "inspection_date": inspection.inspection_date.isoformat() if inspection.inspection_date else None,
         "mileage_km": inspection.mileage_km,
         "visit_time": inspection.visit_time,
         "visit_location": inspection.visit_location,
         "suggested_price": inspection.suggested_price,
         "description": inspection.description,
         "items": inspection.items or [],
-        "updated_at": inspection.updated_at,
+        "sheet_images": [
+            {"filename": img["filename"], "url": image_url(img["filename"], SHEET_IMAGES_SUBDIR)}
+            for img in (inspection.sheet_images or [])
+        ],
+        "updated_at": inspection.updated_at.isoformat() if inspection.updated_at else None,
     }
 
 
@@ -112,6 +119,39 @@ def admin_delete_inspection(
     inspection = db.query(CarInspection).filter(CarInspection.car_id == car_id).first()
     if inspection is None:
         return error_response("برای این خودرو کارشناسی ثبت نشده است", 404)
+    for img in (inspection.sheet_images or []):
+        delete_upload(img["filename"], SHEET_IMAGES_SUBDIR)
     db.delete(inspection)
     db.commit()
     return success_response({"data": ["deleted"]})
+
+
+@admin_router.post("/cars/{car_id}/inspection/sheet-images")
+def admin_upload_sheet_image(
+    car_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), _: User = Depends(get_current_admin)
+):
+    """آپلود یک عکس از برگه‌ی فیزیکی کارشناسی (اسکن/عکس)؛ می‌تونه چندبار صدا زده بشه."""
+    inspection = db.query(CarInspection).filter(CarInspection.car_id == car_id).first()
+    if inspection is None:
+        return error_response("اول باید فرم کارشناسی رو یک‌بار ذخیره کنید", 404)
+
+    filename = save_upload(file, SHEET_IMAGES_SUBDIR)
+    inspection.sheet_images = [*(inspection.sheet_images or []), {"filename": filename}]
+    db.commit()
+    db.refresh(inspection)
+    return success_response(_serialize_inspection(inspection))
+
+
+@admin_router.delete("/cars/{car_id}/inspection/sheet-images/{filename}")
+def admin_delete_sheet_image(
+    car_id: int, filename: str, db: Session = Depends(get_db), _: User = Depends(get_current_admin)
+):
+    inspection = db.query(CarInspection).filter(CarInspection.car_id == car_id).first()
+    if inspection is None:
+        return error_response("برای این خودرو کارشناسی ثبت نشده است", 404)
+
+    inspection.sheet_images = [img for img in (inspection.sheet_images or []) if img["filename"] != filename]
+    delete_upload(filename, SHEET_IMAGES_SUBDIR)
+    db.commit()
+    db.refresh(inspection)
+    return success_response(_serialize_inspection(inspection))

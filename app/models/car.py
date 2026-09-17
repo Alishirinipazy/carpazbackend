@@ -30,6 +30,13 @@ class Car(Base, TimestampMixin, SoftDeleteMixin):
     model_name: Mapped[str] = mapped_column(String(255))  # e.g. "207", "Cerato", "Tara"
     model_year: Mapped[int] = mapped_column(Integer)  # سال ساخت/تولید
 
+    # انتخاب ساختاریافته از فهرست برند→مدل→تیریم (car_models/car_trims) -
+    # اختیاری و مستقل از model_name، که برای سازگاری با خودروهای قبلی و
+    # امکان تایپ آزاد (وقتی مدل مدنظر هنوز توی فهرست نیست) نگه داشته شده.
+    # وقتی این‌ها پر باشن، model_name موقع ثبت از روشون ساخته می‌شه.
+    car_model_id: Mapped[int | None] = mapped_column(ForeignKey("car_models.id", ondelete="SET NULL"), nullable=True)
+    car_trim_id: Mapped[int | None] = mapped_column(ForeignKey("car_trims.id", ondelete="SET NULL"), nullable=True)
+
     # 0 = کارکرده (used), 1 = نو (new)
     condition: Mapped[int] = mapped_column(SmallInteger, default=1)
     mileage_km: Mapped[int] = mapped_column(Integer, default=0)  # کارکرد به کیلومتر، صفر برای خودروی نو
@@ -66,8 +73,11 @@ class Car(Base, TimestampMixin, SoftDeleteMixin):
 
     brand: Mapped["Brand"] = relationship(back_populates="cars")
     category: Mapped["Category"] = relationship(back_populates="cars")
-    images: Mapped[list["CarImage"]] = relationship(back_populates="car")
+    images: Mapped[list["CarImage"]] = relationship(back_populates="car", cascade="all, delete-orphan", passive_deletes=True)
     inquiries: Mapped[list["Inquiry"]] = relationship(back_populates="car")
+    inspection: Mapped["CarInspection"] = relationship(back_populates="car", uselist=False, cascade="all, delete-orphan", passive_deletes=True)
+    car_model: Mapped["CarModel"] = relationship()
+    car_trim: Mapped["CarTrim"] = relationship()
 
     _STATUS_LABELS = {0: "غیر فعال", 1: "فعال"}
     _CONDITION_LABELS = {0: "کارکرده", 1: "نو"}

@@ -16,3 +16,4 @@ class Brand(Base, TimestampMixin, SoftDeleteMixin):
     logo: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     cars: Mapped[list["Car"]] = relationship(back_populates="brand")
+    models: Mapped[list["CarModel"]] = relationship(back_populates="brand", cascade="all, delete-orphan")

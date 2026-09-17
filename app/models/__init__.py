@@ -7,10 +7,15 @@ from app.models.location import Province, City
 from app.models.address import UserAddress
 from app.models.category import Category
 from app.models.brand import Brand
+from app.models.car_catalog import CarModel, CarTrim
 from app.models.car import Car, CarImage
 from app.models.inquiry import Inquiry
 from app.models.favorite import Favorite
 from app.models.content import ContactUs, Slider, Story
+from app.models.sell_request import SellRequest
+from app.models.price_guide import PriceGuideEntry
+from app.models.inspection import CarInspection
+from app.models.contract import Contract
 
 __all__ = [
     "User",
@@ -20,6 +25,8 @@ __all__ = [
     "UserAddress",
     "Category",
     "Brand",
+    "CarModel",
+    "CarTrim",
     "Car",
     "CarImage",
     "Inquiry",
@@ -27,4 +34,8 @@ __all__ = [
     "ContactUs",
     "Slider",
     "Story",
+    "SellRequest",
+    "PriceGuideEntry",
+    "CarInspection",
+    "Contract",
 ]

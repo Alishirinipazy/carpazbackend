@@ -40,4 +40,9 @@ class CarInspection(Base, TimestampMixin):
     # [{"category": "بدنه", "label": "شاسی جلو", "status": "healthy"}, ...]
     items: Mapped[list] = mapped_column(JSON, default=list)
 
+    # عکس‌های اسکن/عکاسی‌شده از برگه‌ی فیزیکی کارشناسی (مکمل چک‌لیست بالا) -
+    # [{"filename": "123456.jpg"}, ...] - آدرس قابل‌نمایش موقع serialize با
+    # image_url() از روی filename ساخته میشه، نه اینکه خودش ذخیره بشه
+    sheet_images: Mapped[list] = mapped_column(JSON, default=list)
+
     car: Mapped["Car"] = relationship(back_populates="inspection")

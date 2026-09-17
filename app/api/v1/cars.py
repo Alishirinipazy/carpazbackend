@@ -40,6 +40,8 @@ def _serialize_car(car: Car) -> dict:
         "category_id": car.category_id,
         "model_name": car.model_name,
         "model_year": car.model_year,
+        "car_model_id": car.car_model_id,
+        "car_trim_id": car.car_trim_id,
         "condition_value": car.condition,
         "condition": CONDITION_LABELS.get(car.condition, car.condition),
         "mileage_km": car.mileage_km,
@@ -77,6 +79,16 @@ def list_cars(request: Request, page: int = 1, db: Session = Depends(get_db)):
     query = _with_relations(db.query(Car)).order_by(Car.created_at.desc())
     items, links, meta = paginate(query, request, page, per_page=6)
     return success_response({"cars": [_serialize_car(c) for c in items], "links": links, "meta": meta})
+
+
+@router.get("/cars/sitemap")
+def cars_sitemap(db: Session = Depends(get_db)):
+    """
+    فهرست سبک همه‌ی آگهی‌ها (فقط slug و تاریخ آخرین ویرایش) بدون صفحه‌بندی -
+    برای ساخت sitemap.xml در فرانت، نه برای نمایش به کاربر.
+    """
+    rows = db.query(Car.slug, Car.updated_at).order_by(Car.updated_at.desc()).all()
+    return success_response([{"slug": r.slug, "updated_at": r.updated_at.isoformat()} for r in rows])
 
 
 @router.get("/random-cars")
@@ -186,17 +198,17 @@ def filter_options(db: Session = Depends(get_db)):
     ever offers filters that can return results.
     """
     categories = (
-        db.query(Category.id, Category.name, Category.parent_id, func.count(Car.id).label("count"))
+        db.query(Category.id, Category.name, Category.parent_id, Category.image, func.count(Car.id).label("count"))
         .outerjoin(Car, Car.category_id == Category.id)
-        .group_by(Category.id, Category.name, Category.parent_id)
+        .group_by(Category.id, Category.name, Category.parent_id, Category.image)
         .order_by(Category.name)
         .all()
     )
 
     brands = (
-        db.query(Brand.id, Brand.name, func.count(Car.id).label("count"))
+        db.query(Brand.id, Brand.name, Brand.logo, func.count(Car.id).label("count"))
         .outerjoin(Car, Car.brand_id == Brand.id)
-        .group_by(Brand.id, Brand.name)
+        .group_by(Brand.id, Brand.name, Brand.logo)
         .order_by(Brand.name)
         .all()
     )
@@ -211,10 +223,19 @@ def filter_options(db: Session = Depends(get_db)):
 
     return success_response({
         "categories": [
-            {"id": c.id, "name": c.name, "parent_id": c.parent_id, "car_count": c.count}
+            {
+                "id": c.id,
+                "name": c.name,
+                "parent_id": c.parent_id,
+                "image": image_url(c.image, "categories"),
+                "car_count": c.count,
+            }
             for c in categories
         ],
-        "brands": [{"id": b.id, "name": b.name, "car_count": b.count} for b in brands],
+        "brands": [
+            {"id": b.id, "name": b.name, "logo": image_url(b.logo, "brands"), "car_count": b.count}
+            for b in brands
+        ],
         "price_range": {"min": price_min or 0, "max": price_max or 0},
         "year_range": {"min": year_min or 0, "max": year_max or 0},
         "colors": [
@@ -258,6 +279,8 @@ def admin_store(
     category_id: int = Form(...),
     model_name: str = Form(...),
     model_year: int = Form(...),
+    car_model_id: int | None = Form(None),
+    car_trim_id: int | None = Form(None),
     condition: int = Form(1),
     mileage_km: int = Form(0),
     vin: str | None = Form(None),
@@ -292,6 +315,8 @@ def admin_store(
         category_id=category_id,
         model_name=model_name,
         model_year=model_year,
+        car_model_id=car_model_id,
+        car_trim_id=car_trim_id,
         condition=condition,
         mileage_km=mileage_km,
         vin=vin or None,
@@ -336,6 +361,8 @@ def admin_update(
     category_id: int = Form(...),
     model_name: str = Form(...),
     model_year: int = Form(...),
+    car_model_id: int | None = Form(None),
+    car_trim_id: int | None = Form(None),
     condition: int = Form(1),
     mileage_km: int = Form(0),
     vin: str | None = Form(None),
@@ -381,6 +408,8 @@ def admin_update(
     car.category_id = category_id
     car.model_name = model_name
     car.model_year = model_year
+    car.car_model_id = car_model_id
+    car.car_trim_id = car_trim_id
     car.condition = condition
     car.mileage_km = mileage_km
     car.vin = vin or None
