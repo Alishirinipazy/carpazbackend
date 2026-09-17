@@ -40,7 +40,7 @@ def delete_upload(filename: str, subdir: str) -> None:
 
 
 def image_url(filename: str | None, subdir: str) -> str | None:
-    """Mirrors asset('storage/images/' . $subdir . '/' . $filename)."""
+    """Mirrors asset('http://api.carpaz.ir//storage/images/' . $subdir . '/' . $filename)."""
     if not filename:
         return None
-    return f"/storage/images/{subdir}/{filename}"
+    return f"http://api.carpaz.ir/storage/images/{subdir}/{filename}"
