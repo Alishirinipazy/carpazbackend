@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     TOKEN_EXPIRE_MINUTES: int = 0  # 0 = never expires
 
     GHASEDAK_API_KEY: str = ""
-
+    SMS_IR_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     AI_ASSISTANT_MODEL: str = "claude-sonnet-5"
     AI_ASSISTANT_MAX_TOKENS: int = 1024
