@@ -42,14 +42,17 @@ def edit_info(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    duplicate = (
-        db.query(User).filter(User.email == payload.email, User.id != current_user.id).first()
-    )
-    if duplicate:
-        return error_response({"email": ["این ایمیل قبلا استفاده شده است"]}, 422)
+    # email اختیاریه (مثلاً وقتی فقط داریم اسم رو موقع ثبت یه درخواست
+    # تکمیل می‌کنیم) - وقتی نیومده، دست به ایمیل فعلی نمی‌زنیم
+    if payload.email is not None:
+        duplicate = (
+            db.query(User).filter(User.email == payload.email, User.id != current_user.id).first()
+        )
+        if duplicate:
+            return error_response({"email": ["این ایمیل قبلا استفاده شده است"]}, 422)
+        current_user.email = payload.email
 
     current_user.name = payload.name
-    current_user.email = payload.email
     db.commit()
     return success_response(_serialize_user(current_user))
 

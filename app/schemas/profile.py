@@ -8,7 +8,7 @@ POSTAL_CODE_RE = re.compile(r"^\d{5}[ -]?\d{5}$")
 
 class ProfileInfoIn(BaseModel):
     name: str
-    email: str
+    email: str | None = None
 
 
 class AddressIn(BaseModel):
